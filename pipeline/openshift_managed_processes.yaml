@@ -1,0 +1,27 @@
+# This is an openpipe pipeline, for more details check:
+#   https://www.openpipe.org/
+
+start:
+  # Process every output file
+  - read from file list: output/*.json
+  - iterate:
+  - read from file: $_$
+
+  # Process each item from the file content
+  - iterate:
+  - merge:
+      # Extract the process uid from the process status
+      # first field after "Uid:"
+      uid: $int([x.split('\t')[1] for x in status if 'Uid:' in x][0])$
+  - drop: status  # no longer used
+
+  # Filter for processes which are not kubelet managed
+  - select: $'kubepods.slice' in cgroup[0]$
+  - drop: cgroup  # no longer user
+
+  # Filter for non privileged users
+  - select: $uid > 5000$
+
+  # Pretty print the result
+  - pprint:
+

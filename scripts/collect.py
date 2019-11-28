@@ -4,7 +4,6 @@ import json
 from glob import glob
 from socket import gethostname
 from os.path import realpath
-from pprint import pprint
 
 COLLECT_SPEC = ["cgroup", "cmdline", "status", "root"]
 COLLECT_LINKS = ["exe", "root", "cwd"]
