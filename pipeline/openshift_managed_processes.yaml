@@ -9,6 +9,9 @@ start:
 
   # Process each item from the file content
   - iterate:
+
+  # Select only items with all required fields
+  - select: $'status' in _ and 'exe' in _ and 'cmdline' in _$
   - merge:
       # Extract the process uid from the process status
       # first field after "Uid:"
@@ -23,5 +26,65 @@ start:
   - select: $uid > 5000$
 
   # Pretty print the result
-  - pprint:
+  - send to segment:
+    - count_apache
+    - count_java
+    - count_python
+    - count_node
+    - count_ruby
 
+  - insert:
+      name: "«TOTAL»"
+      id: 1
+  - send to segment: group_all
+
+count_ruby:
+  - select: $ exe == 'ruby' or exe.endswith('/ruby')$
+  - insert:
+      name: Ruby
+      id: 1
+  - send to segment: group_all
+
+count_node:
+  - select: $ exe == 'node' or exe.endswith('/node')$
+  - insert:
+      name: NodeJS
+      id: 1
+  - send to segment: group_all
+
+count_python:
+  - select: $ cmdline[0].startswith('python')
+              or cmdline[0].endswith('python')
+              or cmdline[0].endswith('python2')
+              or cmdline[0].endswith('python3')
+              $
+  - insert:
+      name: Python
+      id: 1
+  - send to segment: group_all
+
+count_apache:
+  - select: $ exe == '/usr/sbin/httpd' or cmdline[0] == '/usr/sbin/httpd' $
+  - insert:
+      name: Apache2
+      id: 1
+  - send to segment: group_all
+
+count_java:
+  - select: $ cmdline[0] == 'java' $
+  - insert:
+      name: Java
+      id: 1
+  - send to segment: group_all
+
+group_all:
+  - group by stats:
+      keys: [name]
+      stats: [id]
+  - sort:
+      key: id_sum
+      descendent: True
+  - transform using terminaltables:
+      header: [Name, Count]
+      keys: [name, id_sum]
+  - print:
