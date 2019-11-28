@@ -1,0 +1,15 @@
+- hosts: "{{ target }}"
+  gather_facts: false
+  become: True
+  no_log: True
+  tasks:
+    - name: Run a script with arguments (using 'cmd' parameter)
+      script:
+        cmd: ../scripts/collect.py
+      register: result
+    - name: copy the output to a local file
+      become: False
+      copy:
+        content: "{{ result.stdout }}"
+        dest: "../output/{{ inventory_hostname }}.json"
+      delegate_to: localhost
