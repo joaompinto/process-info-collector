@@ -33,17 +33,21 @@ start:
     - count_python
     - count_node
     - count_ruby
+    - count_nginx
 
   - insert:
       name: "«TOTAL»"
       id: 1
   - send to segment: group_all
 
+count_nginx:
+  - select: $ exe.endswith('/nginx') $
+  - insert: { name: nginx, id: 1 }
+  - send to segment: group_all
+
 count_ruby:
   - select: $ exe == 'ruby' or exe.endswith('/ruby')$
-  - insert:
-      name: Ruby
-      id: 1
+  - insert: { name: Ruby, id: 1 }
   - send to segment: group_all
 
 count_node:
