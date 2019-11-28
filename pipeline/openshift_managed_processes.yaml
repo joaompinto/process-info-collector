@@ -41,7 +41,7 @@ start:
   - send to segment: group_all
 
 count_nginx:
-  - select: $ exe.endswith('/nginx') $
+  - select: $ exe.endswith('/nginx') and 'master' in cmdline[0] $
   - insert: { name: nginx, id: 1 }
   - send to segment: group_all
 
