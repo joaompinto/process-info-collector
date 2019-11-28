@@ -18,12 +18,13 @@ start:
       uid: $int([x.split('\t')[1] for x in status if 'Uid:' in x][0])$
   - drop: status  # no longer used
 
-  # Filter for processes which are not kubelet managed
+  # Select only processesses which are kubelet managed
   - select: $'kubepods.slice' in cgroup[0]$
   - drop: cgroup  # no longer user
 
-  # Filter for non privileged users
-  - select: $uid > 5000$
+  # Filter for openshift provided user ids
+  # can be found with: grep uidAllocatorRange /etc/origin/master/master-config.yaml
+  - select: $uid >= 1000000000$
 
   # Pretty print the result
   - send to segment:
