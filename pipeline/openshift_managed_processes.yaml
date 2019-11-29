@@ -26,70 +26,43 @@ start:
   # can be found with: grep uidAllocatorRange /etc/origin/master/master-config.yaml
   - select: $uid >= 1000000000$
 
-  # Pretty print the result
-  - send to segment:
-    - count_apache
-    - count_java
-    - count_python
-    - count_node
-    - count_ruby
-    - count_nginx
+  - update:
+      set: { basecmd: "$cmdline[0]$", id: 0, exebin: "$exe.split('/')[-1]$" }
 
-  - insert:
-      name: "«TOTAL»"
-      id: 1
-  - send to segment: group_all
+  - update using case replace:
+      technology:
+        # Select only master process (which don't have extra arguments)
+        postgres: $exebin == 'postgres' and basecmd=='postgres'$
+        mysql: $exebin == 'mysqld' $
+        MongoDB: $exebin == 'mongod'$
+        Apache: $ exe == '/usr/sbin/httpd' or cmdline[0] == '/usr/sbin/httpd' $
+        HAProxy: $ exebin == 'haproxy' $
+        Nginx: $ exebin == 'nginx' $
+        Ruby: $ exebin == 'ruby' $
+        Node: $ exebin == 'node' $
+        Python: $ 'python' in exebin $
+        Java: $ basecmd == 'java' or exebin == "java" $
+        Other: True
 
-count_nginx:
-  - select: $ exe.endswith('/nginx') and 'master' in cmdline[0] $
-  - insert: { name: nginx, id: 1 }
-  - send to segment: group_all
+  - update using case replace:
+      tech_class:
+        web server: $technology in ['Apache', 'Nginx', 'HAProxy']$
+        database: $technology in ['postgres', 'mysql', 'MongoDB']$
+        Other: True
 
-count_ruby:
-  - select: $ exe == 'ruby' or exe.endswith('/ruby')$
-  - insert: { name: Ruby, id: 1 }
-  - send to segment: group_all
+  - send to segment: report_others
 
-count_node:
-  - select: $ exe == 'node' or exe.endswith('/node')$
-  - insert:
-      name: NodeJS
-      id: 1
-  - send to segment: group_all
-
-count_python:
-  - select: $ cmdline[0].startswith('python')
-              or cmdline[0].endswith('python')
-              or cmdline[0].endswith('python2')
-              or cmdline[0].endswith('python3')
-              $
-  - insert:
-      name: Python
-      id: 1
-  - send to segment: group_all
-
-count_apache:
-  - select: $ exe == '/usr/sbin/httpd' or cmdline[0] == '/usr/sbin/httpd' $
-  - insert:
-      name: Apache2
-      id: 1
-  - send to segment: group_all
-
-count_java:
-  - select: $ cmdline[0] == 'java' $
-  - insert:
-      name: Java
-      id: 1
-  - send to segment: group_all
-
-group_all:
   - group by stats:
-      keys: [name]
+      keys: [technology, tech_class]
       stats: [id]
   - sort:
-      key: id_sum
+      key: tech_class
       descendent: True
   - transform using terminaltables:
-      header: [Name, Count]
-      keys: [name, id_sum]
+      header: [Class, Tech, Count]
+      keys: [tech_class, technology, id_count]
   - print:
+
+report_others:
+  - select: $technology == "Other"$
+  - pprint:
