@@ -1,0 +1,39 @@
+start:
+  - print: Languages
+  - read from file: output/relevant.json
+  - iterate:
+  - update using case replace:
+      tech:
+        Ruby: $ exebin == 'ruby' $
+        PHP: $ exebin in ['php', 'php-fpm'] $
+        Node: $ exebin == 'node'
+              or 'node server.js' in fullcmd
+              or 'npm start' in fullcmd
+              or '-c node' in fullcmd
+              $
+        PHP: $ exebin in ['php', 'php-fpm'] $
+        Elixir: $ "iex " in fullcmd $
+        Python: $
+          'python' in exebin
+          or "-c python " in fullcmd
+          or "python -m " in fullcmd
+          $
+        Java: $ basecmd == 'java' or exebin == "java" $
+        Other: True
+
+  - update: { set: {id: 0} } # Dummy number for stats aggregation
+
+  - group by stats:
+      keys: [tech]
+      stats: [id]
+  - sort:
+      key: id_count
+      descendent: True
+  - transform using terminaltables:
+      header: [Technology, Count]
+      keys: [tech, id_count]
+  - print:
+
+
+
+

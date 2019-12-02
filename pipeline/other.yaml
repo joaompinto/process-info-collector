@@ -1,0 +1,112 @@
+start:
+  - read from file: output/relevant.json
+  - iterate:
+  - update using case replace:
+      technology:
+        # Select only master process (which don't have extra arguments)
+        Passenger Ruby App: $'Passenger RubyApp' in fullcmd$
+        RubyOnRails: $'ruby bin/rails' in fullcmd$
+        SonarQube: $ cwd == '/opt/sonarqube' and exebin == 'java' $
+        New Relic: $ exebin == 'newrelic-daemon' $
+        Apache Solr: $ cwd == '/opt/solr/server' and exebin == 'java' $
+        Jenkins: $ '/usr/lib/jenkins/jenkins.war' in fullcmd $
+        JBoss: $'org.jboss.as.standalone' in fullcmd$
+        Tomcat: $'org.apache.catalina.startup.Bootstrap start' in fullcmd$
+        Phusion Passenger: $exebin == 'PassengerAgent'$
+        Rabbit MQ: $'rabbitmq-server' in fullcmd$
+        Minio: $ exebin == 'minio' $
+        KeyCloack: $ exebin == 'keycloak-gatekeeper' $
+        Dropbear SSH: $ exebin == 'dropbear' $
+        Celery Beat: $ '/bin/sh /bin/celery-beat' in fullcmd $
+        Other: True
+  - update using case replace:
+      technology:
+        # Select only master process (which don't have extra arguments)
+        Passenger Ruby App: $'Passenger RubyApp' in fullcmd$
+        RubyOnRails: $'ruby bin/rails' in fullcmd$
+        SonarQube: $ cwd == '/opt/sonarqube' and exebin == 'java' $
+        New Relic: $ exebin == 'newrelic-daemon' $
+        Apache Solr: $ cwd == '/opt/solr/server' and exebin == 'java' $
+        Jenkins: $ '/usr/lib/jenkins/jenkins.war' in fullcmd $
+        JBoss: $'org.jboss.as.standalone' in fullcmd$
+        Tomcat: $'org.apache.catalina.startup.Bootstrap start' in fullcmd$
+        Phusion Passenger: $exebin == 'PassengerAgent'$
+        uwsgi: $ exebin == 'uwsgi' $
+        gunicorn: $ 'gunicorn ' in fullcmd $
+        Apache: $ exebin in ['httpd', 'apache2'] or basecmd == '/usr/sbin/httpd' $
+        HAProxy: $ exebin == 'haproxy' or 'sbin/haproxy' in fullcmd $
+        Nginx: $ exebin == 'nginx' $
+        Ruby: $ exebin == 'ruby' $
+        PHP: $ exebin in ['php', 'php-fpm'] $
+        Node: $ exebin == 'node'
+              or 'node server.js' in fullcmd
+              or 'npm start' in fullcmd
+              or '-c node' in fullcmd
+              $
+        # Python: $
+        #   'python' in exebin
+        #   or "-c python " in fullcmd
+        #   or "python -m " in fullcmd
+        #   $
+        #Java: $ basecmd == 'java' or exebin == "java" $
+        Rabbit MQ: $'rabbitmq-server' in fullcmd$
+        Minio: $ exebin == 'minio' $
+        KeyCloack: $ exebin == 'keycloak-gatekeeper' $
+        Dropbear SSH: $ exebin == 'dropbear' $
+        Celery Beat: $ '/bin/sh /bin/celery-beat' in fullcmd $
+        Other: True
+
+  - update using case replace:
+      tech_class:
+        j2ee server: $technology in ['JBoss', 'Tomcat']$
+        web server: $technology in ['Apache', 'Nginx', 'HAProxy', 'uwsgi', 'Phusion Passenger']$
+        web sockets: $technology in ['Django daphne']$
+        database: $technology in ['postgres', 'mysql', 'MongoDB', 'Redis', 'memcached']$
+        Other: True
+
+  - send to segment: report_others
+
+  - group by stats:
+      keys: [technology, tech_class]
+      stats: [id]
+  - sort:
+      key: tech_class
+      descendent: True
+  - transform using terminaltables:
+      header: [Class, Tech, Count]
+      keys: [tech_class, technology, id_count]
+  - print:
+
+report_others:
+  # Ignore those we do not care:
+  - update:
+      set:
+        ignore_list:
+          - oauth-proxy
+          - postgres
+          - dumb-init
+          #- prometheus
+          - configmap-reload
+          - prometheus-config-reloader
+          - cat
+          - sleep
+          - postgres_exporter
+          - kube-state-metrics
+          - alertmanager
+          - prometheus
+          - beam.smp
+          - epmd #erlang stufff
+          - erl_child_setup
+          - inet_gethost
+          - redis-cli
+          - MailHog
+          - filebeat
+          - stunnel4
+          - psql
+          - goiban-service
+          - eventrouter
+  - select: $exebin not in ignore_list$
+  - select: $technology == "Other"$
+  - select: $'/usr/libexec/s2i' not in fullcmd$
+  - drop: ignore_list
+  - pprint:

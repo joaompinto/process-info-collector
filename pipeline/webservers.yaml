@@ -1,0 +1,27 @@
+start:
+    - print: Web/App Servers
+    - read from file: output/relevant.json
+    - iterate:
+    - update using case replace:
+        tech:
+            uwsgi: $ exebin == 'uwsgi' $
+            gunicorn: $ 'gunicorn ' in fullcmd $
+            Apache: $ exebin in ['httpd', 'apache2'] or basecmd == '/usr/sbin/httpd' $
+            HAProxy: $ exebin == 'haproxy' or 'sbin/haproxy' in fullcmd $
+            Nginx: $ exebin == 'nginx' $
+            Daphne: $ 'daphne' in fullcmd $
+
+    - select: $'tech' in _$
+
+    - update: { set: { id: 0 } } # Dummy number for stats aggregation
+
+    - group by stats:
+        keys: [tech]
+        stats: [id]
+    - sort:
+        key: id_count
+        descendent: True
+    - transform using terminaltables:
+        header: [Technology, Count]
+        keys: [tech, id_count]
+    - print:

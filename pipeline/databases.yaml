@@ -1,0 +1,26 @@
+start:
+    - print: Databases
+    - read from file: output/relevant.json
+    - iterate:
+    - update using case replace:
+        tech:
+            postgres: $exebin == 'postgres' and basecmd=='postgres'$
+            mysql: $exebin == 'mysqld' $
+            MongoDB: $exebin == 'mongod'$
+            Redis: $exebin == 'redis-server'$
+            memcached: $exebin == 'memcached'$
+            Other: True
+    - select: $tech != "Other"$
+
+    - update: { set: { id: 0 } } # Dummy number for stats aggregation
+
+    - group by stats:
+            keys: [tech]
+            stats: [id]
+    - sort:
+        key: id_count
+        descendent: True
+    - transform using terminaltables:
+        header: [Technology, Count]
+        keys: [tech, id_count]
+    - print:
